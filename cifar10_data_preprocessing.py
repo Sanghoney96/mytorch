@@ -14,7 +14,7 @@ batches contain exactly 5000 images from each class.
 
 def unpickle(file):
     """
-    load the cifar-10 data.
+    Load the cifar-10 data.
     """
 
     with open(file, "rb") as fo:
@@ -22,7 +22,7 @@ def unpickle(file):
     return data
 
 
-def load_cifar_10_data(data_dir, negatives=False):
+def load_data(data_dir, negatives=False):
     """
     Return train_data, train_labels, test_data, test_labels, label_names.
     """
@@ -56,10 +56,12 @@ def load_cifar_10_data(data_dir, negatives=False):
         cifar_train_labels += cifar_train_data_dict[b"labels"]
 
     cifar_train_data = cifar_train_data.reshape((len(cifar_train_data), 3, 32, 32))
+
     if negatives:
         cifar_train_data = cifar_train_data.transpose(0, 2, 3, 1).astype(np.float32)
     else:
         cifar_train_data = np.rollaxis(cifar_train_data, 1, 4)
+
     cifar_train_labels = np.array(cifar_train_labels)
 
     # test data
