@@ -38,7 +38,7 @@ class Linear:
         self.A_prev = A_prev
         return Z
 
-    def backward(self, dout):
+    def backprop(self, dout):
         pass
 
 
