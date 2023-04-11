@@ -28,14 +28,10 @@ class Linear:
     It conducts backpropagation computation as well.
     """
 
-    def __init__(self, in_features, out_features, init_method="zeros"):
+    def __init__(self, in_features, out_features, init_method="normal"):
         self.in_features = in_features
         self.out_features = out_features
-        self.load_parameters()
-
-    def load_parameters(self):
-        self.W, self.b = init(self.in_features, self.out_features, init_method="zeros")
-        return self.W, self.b
+        self.W, self.b = init(self.in_features, self.out_features, init_method="normal")
 
     def __call__(self, A_prev):
         Z = np.dot(self.W, A_prev) + self.b
