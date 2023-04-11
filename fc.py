@@ -1,6 +1,10 @@
 import numpy as np
 from fc_initializer import init
 
+"""
+Contains utilities for building FC layers.
+"""
+
 
 class Flatten:
     """
