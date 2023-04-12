@@ -35,15 +35,30 @@ class Linear:
     def __init__(self, in_features, out_features, init_method="normal"):
         self.in_features = in_features
         self.out_features = out_features
-        self.W, self.b = init(self.in_features, self.out_features, init_method="normal")
+        # Initialize weight and bias.
+        self.W, self.b = init(self.in_features, self.out_features, init_method)
 
     def __call__(self, A_prev):
+        """
+        Feedforward computation of a linear layer.
+        """
+
         Z = np.dot(self.W, A_prev) + self.b
         self.A_prev = A_prev
         return Z
 
-    def backprop(self, dout):
-        pass
+    def backprop(self, dZ):
+        """
+        Backpropagation computation of a linear layer.
+        Receive dZ from backprop computation of activation layer.
+        Then, compute dW & db of current layer and dA_prev.
+        """
+
+        m = self.A_prev.shape[1]
+        dW = (1 / m) * np.dot(dZ, self.A_prev.T)
+        db = (1 / m) * np.sum(dZ, axis=1, keepdims=True)
+        self.dA_prev = np.dot(self.W.T, dZ)
+        return dW, db
 
 
 class Dropout:
