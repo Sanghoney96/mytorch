@@ -25,7 +25,6 @@ class softmax:
     def __call__(self, Z):
         Al = np.exp(Z) / np.sum(np.exp(Z), axis=0)
         self.Al = Al
-        # self.loss = CategorialCrossentropy(self.y, self.Al)
         return Al
 
     def backprop(self):
