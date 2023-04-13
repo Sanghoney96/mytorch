@@ -54,10 +54,10 @@ class Linear:
         Then, compute dW & db of current layer and dA_prev.
         """
 
-        m = self.A_prev.shape[1]
-        dW = (1 / m) * np.dot(dZ, self.A_prev.T)
-        db = (1 / m) * np.sum(dZ, axis=1, keepdims=True)
-        self.dA_prev = np.dot(self.W.T, dZ)
+        batch_size = self.A_prev.shape[1]
+        dW = (1 / batch_size) * np.dot(dZ, self.A_prev.T)
+        db = (1 / batch_size) * np.sum(dZ, axis=1, keepdims=True)
+        self.dA = np.dot(self.W.T, dZ)
         return dW, db
 
 
