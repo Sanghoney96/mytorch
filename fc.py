@@ -2,7 +2,7 @@ import numpy as np
 from fc_initializer import init
 
 """
-Contains utilities for building FC layers.
+Includes utilities for building FC layers.
 """
 
 
@@ -42,7 +42,6 @@ class Linear:
         """
         Feedforward computation of a linear layer.
         """
-
         Z = np.dot(self.W, A_prev) + self.b
         self.A_prev = A_prev
         return Z
@@ -53,12 +52,11 @@ class Linear:
         Receive dZ from backprop computation of activation layer.
         Then, compute dW & db of current layer and dA_prev.
         """
-
         batch_size = self.A_prev.shape[1]
-        dW = (1 / batch_size) * np.dot(dZ, self.A_prev.T)
-        db = (1 / batch_size) * np.sum(dZ, axis=1, keepdims=True)
-        self.dA = np.dot(self.W.T, dZ)
-        return dW, db
+        self.dW = (1 / batch_size) * np.dot(dZ, self.A_prev.T)
+        self.db = (1 / batch_size) * np.sum(dZ, axis=1, keepdims=True)
+        dA = np.dot(self.W.T, dZ)
+        return dA
 
 
 class Dropout:
@@ -72,3 +70,13 @@ class Dropout:
 
     def __init__(self, ratio=0.5):
         self.ratio = ratio
+
+    def __call__(self, A, is_training=True):
+        if is_training:
+            self.switch = (np.random.random(A.shape[0]) > self.ratio).astype(np.int)
+            return A * self.switch
+        else:
+            return A * (1.0 - self.ratio)
+
+    def backprop(self, dA):
+        return dA * self.switch

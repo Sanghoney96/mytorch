@@ -136,4 +136,4 @@ def normalize_image(data):
     data_min = data.min(axis=(1, 2), keepdims=True)
     data_max = data.max(axis=(1, 2), keepdims=True)
     norm_data = (data - data_min) / (data_max - data_min)
-    return norm_data
+    return norm_data.astype(np.float32)

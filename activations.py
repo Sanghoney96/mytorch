@@ -7,6 +7,7 @@ class sigmoid:
     """
 
     def __call__(self, Z):
+        Z = Z.astype(np.float32)
         A = 1 / (1 + np.exp(-Z))
         self.A = A
         return A
@@ -23,6 +24,7 @@ class softmax:
     """
 
     def __call__(self, Z):
+        Z = Z.astype(np.float32)
         Al = np.exp(Z) / np.sum(np.exp(Z), axis=0)
         self.Al = Al
         return Al
@@ -43,7 +45,7 @@ class relu:
         Make the mask that memorizes the position of activated values.
         Then put on input Z to compute activated output A.
         """
-
+        Z = Z.astype(np.float32)
         self.mask = (Z > 0).astype(np.int)
         A = Z * self.mask
         self.A = A
@@ -53,6 +55,5 @@ class relu:
         """
         Put mask on input dA to compute activated output dZ.
         """
-
         dZ = dA * self.mask
         return dZ
