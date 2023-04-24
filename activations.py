@@ -20,7 +20,7 @@ class sigmoid:
 class softmax:
     """
     Softmax activation layer.
-    You should this activation 'only' for output layer!!
+    You should use this activation 'only' for output layer!!
     """
 
     def __call__(self, Z):
