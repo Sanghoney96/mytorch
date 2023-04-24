@@ -6,6 +6,11 @@ Includes loss functions.
 
 
 class MSE:
+    """
+    Mean Squared Error loss function.
+    L2 norm of the error between label and prediction.
+    """
+
     def __call__(self, Al, Y):
         batch_size = Al.shape[1]
         loss = 0.5 * np.sum((Al - Y) ** 2) / batch_size
@@ -19,7 +24,7 @@ class MSE:
 
 class CategorialCrossentropy:
     """
-    Loss function for softmax output layer.
+    Cross Entropy loss function for softmax output layer.
     We assume that each label and prediction of data is a (one-hot) vector.
     So the shape of Al and Y is (num_input_neurons, num_data).
     """
@@ -33,7 +38,7 @@ class CategorialCrossentropy:
 
 class BinaryCrossentropy:
     """
-    Loss function for sigmoid output layer.
+    Cross Entropy loss function for sigmoid output layer.
     We assume that each label and prediction of data is a scalar, not a (one-hot) vector.
     So the shape of al and y is (1, num_data).
     """
