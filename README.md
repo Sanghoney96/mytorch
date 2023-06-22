@@ -4,5 +4,5 @@ Author : Sangheon Jeong
 ------------------------
 Description
 -----------
-1. DL Framework for implementing MLP and CNN. RNN isn't supported.
+1. DL Framework for implementing MLP and CNN. RNN doesn't supported.
 2. Developed using Numpy
