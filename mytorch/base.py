@@ -9,6 +9,9 @@ that support automatic differentiation.
 
 class Variable:
     def __init__(self, data):
+        """
+        Restore input data as ndarray.
+        """
         if not isinstance(data, np.ndarray):
             raise TypeError("{} cannot be supported.".format(type(data)))
 
@@ -17,9 +20,15 @@ class Variable:
         self.creator = None
 
     def set_creator(self, func):
+        """
+        Refer function as creator of output variable.
+        """
         self.creator = func
 
     def backward(self):
+        """
+        Backpropagate from the output(dy/dy=1) to the input.
+        """
         if self.grad is None:
             self.grad = np.ones(self.data.shape)
 
@@ -33,16 +42,24 @@ class Variable:
 
 
 def as_ndarray(x):
+    """
+    Convert scalar(float64 or 32) to ndarray.
+    """
     if np.isscalar(x):
         return np.array(x)
     return x
 
 
 class Function:
+    """
+    Function class for implementing functions.
+    """
+
     def __call__(self, input):
         x = input.data
         y = self.forward(x)
         output = Variable(as_ndarray(y))
+
         output.set_creator(self)
         self.output = output
         self.input = input  # Save input for backprop
