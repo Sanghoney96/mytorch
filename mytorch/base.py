@@ -35,10 +35,16 @@ class Variable:
         funcs = [self.creator]
         while funcs:
             f = funcs.pop()
-            x, y = f.input, f.output
-            x.grad = f.backward(y.grad)
-            if x.creator is not None:
-                funcs.append(x.creator)
+            dys = [output.grad for output in f.outputs]
+            dxs = f.backward(*dys)
+            if not isinstance(dxs, tuple):
+                dxs = (dxs,)
+
+            for x, dx in zip(f.inputs, dxs):
+                x.grad = dx
+
+                if x.creator is not None:
+                    funcs.append(x.creator)
 
 
 def as_ndarray(x):
@@ -55,20 +61,23 @@ class Function:
     Function class for implementing functions.
     """
 
-    def __call__(self, input):
-        x = input.data
-        y = self.forward(x)
-        output = Variable(as_ndarray(y))
+    def __call__(self, *inputs):
+        xs = [x.data for x in inputs]
+        ys = self.forward(*xs)
+        if not isinstance(ys, tuple):
+            ys = (ys,)
+        outputs = [Variable(as_ndarray(y)) for y in ys]
 
-        output.set_creator(self)
-        self.output = output
-        self.input = input  # Save input for backprop
-        return output
+        for output in outputs:
+            output.set_creator(self)
+        self.inputs = inputs  # Save input for backprop
+        self.outputs = outputs
+        return outputs if len(outputs) > 1 else outputs[0]
 
-    def forward(self, x):
+    def forward(self, xs):
         raise NotImplementedError()
 
-    def backward(self, dy):
+    def backward(self, dys):
         raise NotImplementedError()
 
 
@@ -77,14 +86,27 @@ class Function:
 """
 
 
+class Add(Function):
+    def forward(self, x0, x1):
+        y = x0 + x1
+        return y  # return tuple
+
+    def backward(self, dy):
+        return dy, dy
+
+
+def add(x0, x1):
+    return Add()(x0, x1)
+
+
 class Square(Function):
     def forward(self, x):
         y = x**2
         return y
 
     def backward(self, dy):
-        x = self.input.data
-        dx = dy * 2 * x
+        x = self.inputs[0].data
+        dx = 2 * x * dy
         return dx
 
 
@@ -108,13 +130,15 @@ def exp(x):
 
 
 """
-## Test : simple forwardprop / backprop
+## Test : forwardprop for multiple inputs/outputs
 """
 
-x = Variable(np.array(0.5))
-w1 = square(x)
-w2 = exp(w1)
-y = square(w2)
+x0 = Variable(np.array(2.0))
+x1 = Variable(np.array(3.0))
 
+y = add(square(x0), square(x1))
 y.backward()
-print(x.grad)
+
+print(y.data)
+print(x0.grad)
+print(x1.grad)
