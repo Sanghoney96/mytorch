@@ -120,7 +120,7 @@ class Exponential(Function):
         return y
 
     def backward(self, dy):
-        x = self.input.data
+        x = self.inputs[0].data
         dx = dy * np.exp(x)
         return dx
 
