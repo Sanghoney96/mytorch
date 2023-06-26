@@ -13,7 +13,7 @@ class Variable:
         Restore input data as ndarray.
         """
         if not isinstance(data, np.ndarray):
-            raise TypeError("{} cannot be supported.".format(type(data)))
+            raise TypeError("{} type cannot be used.".format(type(data)))
 
         self.data = data
         self.grad = None
@@ -41,10 +41,16 @@ class Variable:
                 dxs = (dxs,)
 
             for x, dx in zip(f.inputs, dxs):
-                x.grad = dx
+                if x.grad is None:
+                    x.grad = dx
+                else:
+                    x.grad = x.grad + dx
 
                 if x.creator is not None:
                     funcs.append(x.creator)
+
+    def cleargrad(self):
+        self.grad = None
 
 
 def as_ndarray(x):
@@ -70,7 +76,7 @@ class Function:
 
         for output in outputs:
             output.set_creator(self)
-        self.inputs = inputs  # Save input for backprop
+        self.inputs = inputs  # Save inputs/outputs for backprop
         self.outputs = outputs
         return outputs if len(outputs) > 1 else outputs[0]
 
@@ -130,15 +136,15 @@ def exp(x):
 
 
 """
-## Test : forwardprop for multiple inputs/outputs
+## Test : variable overwritting
 """
 
-x0 = Variable(np.array(2.0))
-x1 = Variable(np.array(3.0))
-
-y = add(square(x0), square(x1))
+x = Variable(np.array(2.0))
+y = add(x, x)
 y.backward()
+print(x.grad)  # 2.0
 
-print(y.data)
-print(x0.grad)
-print(x1.grad)
+x.cleargrad()  # 미분값 초기화
+y = add(add(x, x), x)
+y.backward()
+print(x.grad)  # 3.0
