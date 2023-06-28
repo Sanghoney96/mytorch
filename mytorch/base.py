@@ -18,12 +18,14 @@ class Variable:
         self.data = data
         self.grad = None
         self.creator = None
+        self.generation = 0
 
     def set_creator(self, func):
         """
         Refer function as creator of output variable.
         """
         self.creator = func
+        self.generation = func.generation + 1
 
     def backward(self):
         """
@@ -32,7 +34,18 @@ class Variable:
         if self.grad is None:
             self.grad = np.ones(self.data.shape)
 
-        funcs = [self.creator]
+        funcs = []
+        seen_set = set()
+
+        # add functions in funcs and sort based on the generation of functions.
+        def add_func(f):
+            if f not in seen_set:
+                seen_set.add(f)
+                funcs.append(f)
+                funcs.sort(key=lambda x: x.generation)
+
+        add_func(self.creator)
+
         while funcs:
             f = funcs.pop()
             dys = [output.grad for output in f.outputs]
@@ -47,7 +60,7 @@ class Variable:
                     x.grad = x.grad + dx
 
                 if x.creator is not None:
-                    funcs.append(x.creator)
+                    add_func(x.creator)
 
     def cleargrad(self):
         self.grad = None
@@ -73,6 +86,8 @@ class Function:
         if not isinstance(ys, tuple):
             ys = (ys,)
         outputs = [Variable(as_ndarray(y)) for y in ys]
+
+        self.generation = max([x.generation for x in inputs])
 
         for output in outputs:
             output.set_creator(self)
@@ -140,11 +155,9 @@ def exp(x):
 """
 
 x = Variable(np.array(2.0))
-y = add(x, x)
+a = square(x)
+y = add(square(a), square(a))
 y.backward()
-print(x.grad)  # 2.0
 
-x.cleargrad()  # 미분값 초기화
-y = add(add(x, x), x)
-y.backward()
+print(y.data)
 print(x.grad)  # 3.0
