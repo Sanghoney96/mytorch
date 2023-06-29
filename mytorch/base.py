@@ -1,10 +1,32 @@
 import numpy as np
 import weakref
+from contextlib import contextmanager
 
 """
 This file includes Config / Variable / Function class 
 that support automatic differentiation.
 """
+
+
+class Config:
+    enable_backward = True
+
+
+@contextmanager
+def using_config(flag, bool):
+    """
+    Turn off the backpropagation mode when inference is ongoing.
+    """
+    old_bool = getattr(Config, flag)
+    setattr(Config, flag, bool)
+    try:
+        yield
+    finally:
+        setattr(Config, flag, old_bool)
+
+
+def no_backward():
+    return using_config("enable_backward", False)
 
 
 class Variable:
@@ -27,7 +49,7 @@ class Variable:
         self.creator = func
         self.generation = func.generation + 1
 
-    def backward(self):
+    def backward(self, retain_grad=False):
         """
         Backpropagate from the output(dy/dy=1) to the input.
         """
@@ -48,7 +70,7 @@ class Variable:
 
         while funcs:
             f = funcs.pop()
-            dys = [output.grad for output in f.outputs]
+            dys = [output().grad for output in f.outputs]
             dxs = f.backward(*dys)
             if not isinstance(dxs, tuple):
                 dxs = (dxs,)
@@ -61,6 +83,10 @@ class Variable:
 
                 if x.creator is not None:
                     add_func(x.creator)
+
+            if not retain_grad:
+                for y in f.outputs:
+                    y().grad = None
 
     def cleargrad(self):
         self.grad = None
@@ -87,12 +113,16 @@ class Function:
             ys = (ys,)
         outputs = [Variable(as_ndarray(y)) for y in ys]
 
-        self.generation = max([x.generation for x in inputs])
+        if Config.enable_backward:
+            self.generation = max([x.generation for x in inputs])
 
-        for output in outputs:
-            output.set_creator(self)
-        self.inputs = inputs  # Save inputs/outputs for backprop
-        self.outputs = outputs
+            for output in outputs:
+                output.set_creator(self)
+            self.inputs = inputs  # Save inputs/outputs for backprop
+            self.outputs = [
+                weakref.ref(output) for output in outputs
+            ]  # doesn't count reference of output
+
         return outputs if len(outputs) > 1 else outputs[0]
 
     def forward(self, xs):
@@ -151,13 +181,15 @@ def exp(x):
 
 
 """
-## Test : variable overwritting
+## Test : retain_grad
 """
 
-x = Variable(np.array(2.0))
-a = square(x)
-y = add(square(a), square(a))
+x0 = Variable(np.array(1.0))
+x1 = Variable(np.array(1.0))
+
+t = add(x0, x1)
+y = add(x0, t)
 y.backward()
 
-print(y.data)
-print(x.grad)  # 3.0
+print(y.grad, t.grad)
+print(x0.grad, x1.grad)
