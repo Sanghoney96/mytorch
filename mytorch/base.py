@@ -30,17 +30,40 @@ def no_backward():
 
 
 class Variable:
-    def __init__(self, data):
+    def __init__(self, data, name=None):
         """
         Restore input data as ndarray.
         """
         if not isinstance(data, np.ndarray):
             raise TypeError("{} type cannot be used.".format(type(data)))
 
+        self.name = name
         self.data = data
         self.grad = None
         self.creator = None
         self.generation = 0
+
+    @property
+    def shape(self):
+        return self.data.shape
+
+    @property
+    def ndim(self):
+        return self.data.ndim
+
+    @property
+    def size(self):
+        return self.data.size
+
+    @property
+    def dtype(self):
+        return self.data.dtype
+
+    def __repr__(self):
+        if self.data is None:
+            return "Variable(None)"
+        p = str(self.data).replace("\n", "\n" + " " * 9)
+        return "variable(" + p + ")"
 
     def set_creator(self, func):
         """
@@ -184,12 +207,5 @@ def exp(x):
 ## Test : retain_grad
 """
 
-x0 = Variable(np.array(1.0))
-x1 = Variable(np.array(1.0))
-
-t = add(x0, x1)
-y = add(x0, t)
-y.backward()
-
-print(y.grad, t.grad)
-print(x0.grad, x1.grad)
+x = Variable(np.array([[1, 2, 3], [4, 5, 6]]))
+print(x)
