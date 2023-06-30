@@ -14,9 +14,6 @@ class Config:
 
 @contextmanager
 def using_config(flag, bool):
-    """
-    Turn off the backpropagation mode when inference is ongoing.
-    """
     old_bool = getattr(Config, flag)
     setattr(Config, flag, bool)
     try:
@@ -26,6 +23,9 @@ def using_config(flag, bool):
 
 
 def no_backward():
+    """
+    Turn off the backpropagation mode when inference is ongoing.
+    """
     return using_config("enable_backward", False)
 
 
@@ -42,6 +42,8 @@ class Variable:
         self.grad = None
         self.creator = None
         self.generation = 0
+
+    __array_priority__ = 1972
 
     @property
     def shape(self):
@@ -60,6 +62,7 @@ class Variable:
         return self.data.dtype
 
     def __repr__(self):
+        """Print variable that has a shape of ndarray"""
         if self.data is None:
             return "Variable(None)"
         p = str(self.data).replace("\n", "\n" + " " * 9)
@@ -115,6 +118,12 @@ class Variable:
         self.grad = None
 
 
+def as_variable(x):
+    if isinstance(x, Variable):
+        return x
+    return Variable(x)
+
+
 def as_ndarray(x):
     """
     Convert scalar(float64 or 32) to ndarray.
@@ -130,6 +139,8 @@ class Function:
     """
 
     def __call__(self, *inputs):
+        inputs = [as_variable(x) for x in inputs]
+
         xs = [x.data for x in inputs]
         ys = self.forward(*xs)
         if not isinstance(ys, tuple):
@@ -156,56 +167,120 @@ class Function:
 
 
 """
-## functions
+## operators
 """
 
 
 class Add(Function):
     def forward(self, x0, x1):
         y = x0 + x1
-        return y  # return tuple
+        return y
 
     def backward(self, dy):
         return dy, dy
 
 
 def add(x0, x1):
+    x1 = as_ndarray(x1)
     return Add()(x0, x1)
 
 
-class Square(Function):
+class Sub(Function):
+    def forward(self, x0, x1):
+        y = x0 - x1
+        return y
+
+    def backward(self, dy):
+        return dy, -dy
+
+
+def sub(x0, x1):
+    x1 = as_ndarray(x1)
+    return Sub()(x0, x1)
+
+
+def rsub(x0, x1):
+    x1 = as_ndarray(x1)
+    return Sub()(x1, x0)
+
+
+class Mul(Function):
+    def forward(self, x0, x1):
+        y = x0 * x1
+        return y
+
+    def backward(self, dy):
+        x0, x1 = self.inputs[0].data, self.inputs[1].data
+        return dy * x1, dy * x0
+
+
+def mul(x0, x1):
+    return Mul()(x0, x1)
+
+
+class Div(Function):
+    def forward(self, x0, x1):
+        y = x0 / x1
+        return y
+
+    def backward(self, dy):
+        x0, x1 = self.inputs[0].data, self.inputs[1].data
+        dx0 = dy / x1
+        dx1 = dy * (-x0 / x1**2)
+        return dx0, dx1
+
+
+def div(x0, x1):
+    x1 = as_ndarray(x1)
+    return Div()(x0, x1)
+
+
+def rdiv(x0, x1):
+    x1 = as_ndarray(x1)
+    return Div()(x1, x0)
+
+
+class Neg(Function):
     def forward(self, x):
-        y = x**2
+        y = -x
+        return y
+
+    def backward(self, dy):
+        dx = -dy
+        return dx
+
+
+def neg(x):
+    return Neg()(x)
+
+
+class Pow(Function):
+    def __init__(self, a):
+        self.a = a
+
+    def forward(self, x):
+        y = x**self.a
         return y
 
     def backward(self, dy):
         x = self.inputs[0].data
-        dx = 2 * x * dy
+        a = self.a
+        dx = a * x ** (a - 1) * dy
         return dx
 
 
-def square(x):
-    return Square()(x)
+def pow(x, a):
+    return Pow(a)(x)
 
 
-class Exponential(Function):
-    def forward(self, x):
-        y = np.exp(x)
-        return y
-
-    def backward(self, dy):
-        x = self.inputs[0].data
-        dx = dy * np.exp(x)
-        return dx
-
-
-def exp(x):
-    return Exponential()(x)
-
-
-"""
-## Test : retain_grad
-"""
-
-x = Variable(np.array([[1, 2, 3], [4, 5, 6]]))
-print(x)
+def setup_operator():
+    Variable.__add__ = add
+    Variable.__radd__ = add
+    Variable.__sub__ = sub
+    Variable.__rsub__ = rsub
+    Variable.__mul__ = mul
+    Variable.__rmul__ = mul
+    Variable.__truediv__ = div
+    Variable.__rtruediv__ = rdiv
+    Variable.__neg__ = neg
+    Variable.__pow__ = pow
