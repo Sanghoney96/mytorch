@@ -8,25 +8,9 @@ that support automatic differentiation.
 """
 
 
-class Config:
-    enable_backward = True
-
-
-@contextmanager
-def using_config(flag, bool):
-    old_bool = getattr(Config, flag)
-    setattr(Config, flag, bool)
-    try:
-        yield
-    finally:
-        setattr(Config, flag, old_bool)
-
-
-def no_backward():
-    """
-    Turn off the backpropagation mode when inference is ongoing.
-    """
-    return using_config("enable_backward", False)
+"""
+## Variable class
+"""
 
 
 class Variable:
@@ -80,7 +64,7 @@ class Variable:
         Backpropagate from the output(dy/dy=1) to the input.
         """
         if self.grad is None:
-            self.grad = np.ones(self.data.shape)
+            self.grad = Variable(np.ones(self.data.shape))
 
         funcs = []
         seen_set = set()
@@ -118,6 +102,32 @@ class Variable:
         self.grad = None
 
 
+"""
+## Config class and utility functions 
+"""
+
+
+class Config:
+    enable_backward = True
+
+
+@contextmanager
+def using_config(flag, bool):
+    old_bool = getattr(Config, flag)
+    setattr(Config, flag, bool)
+    try:
+        yield
+    finally:
+        setattr(Config, flag, old_bool)
+
+
+def no_backward():
+    """
+    Turn off the backpropagation mode when inference is ongoing.
+    """
+    return using_config("enable_backward", False)
+
+
 def as_variable(x):
     if isinstance(x, Variable):
         return x
@@ -131,6 +141,11 @@ def as_ndarray(x):
     if np.isscalar(x):
         return np.array(x)
     return x
+
+
+"""
+## Function class
+"""
 
 
 class Function:
@@ -210,7 +225,7 @@ class Mul(Function):
         return y
 
     def backward(self, dy):
-        x0, x1 = self.inputs[0].data, self.inputs[1].data
+        x0, x1 = self.inputs
         return dy * x1, dy * x0
 
 
@@ -224,7 +239,7 @@ class Div(Function):
         return y
 
     def backward(self, dy):
-        x0, x1 = self.inputs[0].data, self.inputs[1].data
+        x0, x1 = self.inputs
         dx0 = dy / x1
         dx1 = dy * (-x0 / x1**2)
         return dx0, dx1
@@ -263,7 +278,7 @@ class Pow(Function):
         return y
 
     def backward(self, dy):
-        x = self.inputs[0].data
+        x = self.inputs
         a = self.a
         dx = a * x ** (a - 1) * dy
         return dx

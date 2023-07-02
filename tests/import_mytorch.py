@@ -5,11 +5,16 @@ if "__file__" in globals():
 
 import numpy as np
 from mytorch import Variable
+import mytorch.functions as F
 
 """
-## Test : operator
+## Test : functions
 """
 
 x = Variable(np.array(2.0))
-y1 = 1.0 / x
-print(y1)
+y1 = F.tanh(x)
+y1.backward()
+
+dx = x.grad
+
+print(dx)
