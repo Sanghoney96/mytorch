@@ -5,13 +5,14 @@ if "__file__" in globals():
 
 import numpy as np
 from mytorch import Variable
+from mytorch.functions import reshape
 
-x = Variable(np.array([[1, 2, 3], [4, 5, 6]]))
-a = Variable(np.array([[10, 20, 30], [40, 50, 60]]))
+x = Variable(np.random.rand(2, 3, 4))
 
-y = x * a
+x_T = x.transpose(0, 2, 1)
 
-y.backward(retain_grad=True)
-print(y.grad)
+x_T.backward()
+
+
+print(x_T.shape)
 print(x.grad)
-print(a.grad)

@@ -1,4 +1,5 @@
 import numpy as np
+import mytorch
 import weakref
 from contextlib import contextmanager
 
@@ -100,6 +101,23 @@ class Variable:
 
     def cleargrad(self):
         self.grad = None
+
+    def reshape(self, *shape):
+        if len(shape) == 1 and isinstance(shape[0], tuple):
+            shape = shape[0]
+        return mytorch.functions.reshape(self, shape)
+
+    def transpose(self, *axes):
+        if len(axes) == 0:
+            axes = None
+        elif len(axes) == 1:
+            if isinstance(axes[0], tuple) or axes[0] is None:
+                axes = axes[0]
+        return mytorch.functions.transpose(self, axes)
+
+    @property
+    def T(self):
+        return mytorch.functions.transpose(self)
 
 
 """
