@@ -1,5 +1,10 @@
 import numpy as np
-from mytorch.base import Function, as_variable
+from mytorch import Function, as_variable
+from mytorch import utils
+
+"""
+## Utilities for tensor computation
+"""
 
 
 class Reshape(Function):
@@ -39,6 +44,32 @@ class Transpose(Function):
 
 def transpose(x, axes=None):
     return Transpose(axes)(x)
+
+
+class Sum(Function):
+    def __init__(self, axis=None, keepdims=False):
+        self.axis = axis
+        self.keepdims = keepdims
+
+    def forward(self, x):
+        self.x_shape = x.shape
+        y = x.sum(axis=self.axis, keepdims=self.keepdims)
+        return y
+
+    def backward(self, dy):
+        dy = utils.reshape_sum_backward(dy, self.x_shape, self.axis, self.keepdims)
+        dx = broadcast_to(dy, self.x_shape)  # don't use np.broadcast_to.
+
+        return dx
+
+
+def sum(x, axis=None, keepdims=False):
+    return Sum(axis, keepdims)(x)
+
+
+"""
+## Activation functions
+"""
 
 
 class Tanh(Function):

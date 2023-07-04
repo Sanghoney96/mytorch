@@ -119,6 +119,9 @@ class Variable:
     def T(self):
         return mytorch.functions.transpose(self)
 
+    def sum(self, axis=None, keepdims=False):
+        return mytorch.functions.sum(self, axis, keepdims)
+
 
 """
 ## Config class and utility functions 
