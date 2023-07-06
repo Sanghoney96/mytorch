@@ -7,12 +7,11 @@ import numpy as np
 from mytorch import Variable
 from mytorch.functions import reshape
 
-x = Variable(np.random.rand(2, 3, 4))
+x0 = Variable(np.array([1, 2, 3]))
+x1 = Variable(np.array([10]))
 
-x_T = x.transpose(0, 2, 1)
+y = x0 + x1
+print(y)
 
-x_T.backward()
-
-
-print(x_T.shape)
-print(x.grad)
+y.backward()
+print(x1.grad)

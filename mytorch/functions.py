@@ -46,6 +46,46 @@ def transpose(x, axes=None):
     return Transpose(axes)(x)
 
 
+class BroadcastTo(Function):
+    def __init__(self, shape):
+        self.shape = shape
+
+    def forward(self, x):
+        self.x_shape = x.shape
+        y = np.broadcast_to(x, self.shape)
+        return y
+
+    def backward(self, dy):
+        dx = sum_to(dy, self.x_shape)
+        return dx
+
+
+def broadcast_to(x, shape):
+    if x.shape == shape:
+        return as_variable(x)
+    return BroadcastTo(shape)(x)
+
+
+class SumTo(Function):
+    def __init__(self, shape):
+        self.shape = shape
+
+    def forward(self, x):
+        self.x_shape = x.shape
+        y = utils.sum_to(x, self.shape)
+        return y
+
+    def backward(self, dy):
+        dx = broadcast_to(dy, self.x_shape)
+        return dx
+
+
+def sum_to(x, shape):
+    if x.shape == shape:
+        return as_variable(x)
+    return SumTo(shape)(x)
+
+
 class Sum(Function):
     def __init__(self, axis=None, keepdims=False):
         self.axis = axis

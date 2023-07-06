@@ -209,11 +209,16 @@ class Function:
 
 class Add(Function):
     def forward(self, x0, x1):
+        self.x0_shape, self.x1_shape = x0.shape, x1.shape
         y = x0 + x1
         return y
 
     def backward(self, dy):
-        return dy, dy
+        dx0, dx1 = dy, dy
+        if self.x0_shape != self.x1_shape:
+            dx0 = mytorch.functions.sum_to(dx0, self.x0_shape)
+            dx1 = mytorch.functions.sum_to(dx1, self.x1_shape)
+        return dx0, dx1
 
 
 def add(x0, x1):
@@ -223,11 +228,16 @@ def add(x0, x1):
 
 class Sub(Function):
     def forward(self, x0, x1):
+        self.x0_shape, self.x1_shape = x0.shape, x1.shape
         y = x0 - x1
         return y
 
     def backward(self, dy):
-        return dy, -dy
+        dx0, dx1 = dy, -dy
+        if self.x0_shape != self.x1_shape:
+            dx0 = mytorch.functions.sum_to(dx0, self.x0_shape)
+            dx1 = mytorch.functions.sum_to(dx1, self.x1_shape)
+        return dx0, dx1
 
 
 def sub(x0, x1):
@@ -247,7 +257,13 @@ class Mul(Function):
 
     def backward(self, dy):
         x0, x1 = self.inputs
-        return dy * x1, dy * x0
+        dx0 = dy * x1
+        dx1 = dy * x0
+
+        if x0.shape != x1.shape:
+            dx0 = mytorch.functions.sum_to(dx0, self.x0_shape)
+            dx1 = mytorch.functions.sum_to(dx1, self.x1_shape)
+        return dx0, dx1
 
 
 def mul(x0, x1):
@@ -263,6 +279,10 @@ class Div(Function):
         x0, x1 = self.inputs
         dx0 = dy / x1
         dx1 = dy * (-x0 / x1**2)
+
+        if x0.shape != x1.shape:
+            dx0 = mytorch.functions.sum_to(dx0, x0.shape)
+            dx1 = mytorch.functions.sum_to(dx1, x1.shape)
         return dx0, dx1
 
 
