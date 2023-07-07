@@ -38,8 +38,7 @@ class Transpose(Function):
         if self.axes is None:
             return transpose(dy)
 
-        axes_len = len(self.axes)
-        inv_axes = tuple(np.argsort([ax % axes_len for ax in self.axes]))
+        inv_axes = tuple(np.array(self.axes).argsort())
 
         return transpose(dy, inv_axes)
 
@@ -89,7 +88,7 @@ def sum_to(x, shape):
 
 
 class Sum(Function):
-    def __init__(self, axis, keepdims):
+    def __init__(self, axis=None, keepdims=False):
         self.axis = axis
         self.keepdims = keepdims
 
@@ -128,6 +127,60 @@ def matmul(x, W):
 """
 ## Activation functions
 """
+
+
+class Linear(Function):
+    def forward(self, x, W, b):
+        y = x.dot(W)
+        if b is not None:
+            y += b
+        return y
+
+    def backward(self, dy):
+        x, W, b = self.inputs
+
+        if b.data is None:
+            db = None
+        else:
+            db = sum_to(dy, b.shape)
+
+        dx = matmul(dy, W.T)
+        dW = matmul(x.T, dy)
+        return dx, dW, db
+
+
+def linear(x, W, b=None):
+    return Linear()(x, W, b)
+
+
+class ReLU(Function):
+    def forward(self, x):
+        self.mask = np.where(x > 0, 1.0, 0.0)
+        y = np.maximum(x, 0.0)
+        return y
+
+    def backward(self, dy):
+        dx = dy * self.mask
+        return dx
+
+
+def relu(x):
+    return ReLU()(x)
+
+
+class Sigmoid(Function):
+    def forward(self, x):
+        y = 1 / (1 + np.exp(-x))
+        return y
+
+    def backward(self, dy):
+        y = self.outputs[0]()
+        dx = dy * y * (1 - y)
+        return dx
+
+
+def sigmoid(x):
+    return Sigmoid()(x)
 
 
 class Tanh(Function):

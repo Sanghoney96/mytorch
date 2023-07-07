@@ -9,7 +9,7 @@ import mytorch.functions as F
 import matplotlib.pyplot as plt
 
 # toy dataset
-np.random.seed(0)
+np.random.seed(1972)
 x = np.random.rand(100, 1)
 y = 5 + 2 * x + np.random.rand(100, 1)
 x, y = Variable(x), Variable(y)
