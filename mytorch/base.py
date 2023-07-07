@@ -1,26 +1,42 @@
+import weakref
+import contextlib
 import numpy as np
 import mytorch
-import weakref
-from contextlib import contextmanager
-
-"""
-This file includes Config / Variable / Function class 
-that support automatic differentiation.
-"""
 
 
 """
-## Variable class
+## Config
+"""
+
+
+class Config:
+    enable_backprop = True
+
+
+@contextlib.contextmanager
+def using_config(name, value):
+    old_value = getattr(Config, name)
+    setattr(Config, name, value)
+    try:
+        yield
+    finally:
+        setattr(Config, name, old_value)
+
+
+def no_backward():
+    return using_config("enable_backprop", False)
+
+
+"""
+## Variable / Function
 """
 
 
 class Variable:
     def __init__(self, data, name=None):
-        """
-        Restore input data as ndarray.
-        """
-        if not isinstance(data, np.ndarray):
-            raise TypeError("{} type cannot be used.".format(type(data)))
+        if data is not None:
+            if not isinstance(data, np.ndarray):
+                raise TypeError("{} is not supported".format(type(data)))
 
         self.name = name
         self.data = data
@@ -28,7 +44,7 @@ class Variable:
         self.creator = None
         self.generation = 0
 
-    __array_priority__ = 1972
+    __array_priority__ = 200
 
     @property
     def shape(self):
@@ -46,31 +62,29 @@ class Variable:
     def dtype(self):
         return self.data.dtype
 
+    def __len__(self):
+        return len(self.data)
+
     def __repr__(self):
-        """Print variable that has a shape of ndarray"""
         if self.data is None:
-            return "Variable(None)"
+            return "variable(None)"
         p = str(self.data).replace("\n", "\n" + " " * 9)
         return "variable(" + p + ")"
 
     def set_creator(self, func):
-        """
-        Refer function as creator of output variable.
-        """
         self.creator = func
         self.generation = func.generation + 1
 
+    def cleargrad(self):
+        self.grad = None
+
     def backward(self, retain_grad=False):
-        """
-        Backpropagate from the output(dy/dy=1) to the input.
-        """
         if self.grad is None:
             self.grad = Variable(np.ones(self.data.shape))
 
         funcs = []
         seen_set = set()
 
-        # add functions in funcs and sort based on the generation of functions.
         def add_func(f):
             if f not in seen_set:
                 seen_set.add(f)
@@ -81,7 +95,7 @@ class Variable:
 
         while funcs:
             f = funcs.pop()
-            dys = [output().grad for output in f.outputs]
+            dys = [output().grad for output in f.outputs]  # output is weakref
             dxs = f.backward(*dys)
             if not isinstance(dxs, tuple):
                 dxs = (dxs,)
@@ -98,9 +112,6 @@ class Variable:
             if not retain_grad:
                 for y in f.outputs:
                     y().grad = None
-
-    def cleargrad(self):
-        self.grad = None
 
     def reshape(self, *shape):
         if len(shape) == 1 and isinstance(shape[0], tuple):
@@ -123,57 +134,19 @@ class Variable:
         return mytorch.functions.sum(self, axis, keepdims)
 
 
-"""
-## Config class and utility functions 
-"""
-
-
-class Config:
-    enable_backward = True
-
-
-@contextmanager
-def using_config(flag, bool):
-    old_bool = getattr(Config, flag)
-    setattr(Config, flag, bool)
-    try:
-        yield
-    finally:
-        setattr(Config, flag, old_bool)
-
-
-def no_backward():
-    """
-    Turn off the backpropagation mode when inference is ongoing.
-    """
-    return using_config("enable_backward", False)
-
-
 def as_variable(x):
     if isinstance(x, Variable):
         return x
     return Variable(x)
 
 
-def as_ndarray(x):
-    """
-    Convert scalar(float64 or 32) to ndarray.
-    """
+def as_array(x):
     if np.isscalar(x):
         return np.array(x)
     return x
 
 
-"""
-## Function class
-"""
-
-
 class Function:
-    """
-    Function class for implementing functions.
-    """
-
     def __call__(self, *inputs):
         inputs = [as_variable(x) for x in inputs]
 
@@ -181,17 +154,14 @@ class Function:
         ys = self.forward(*xs)
         if not isinstance(ys, tuple):
             ys = (ys,)
-        outputs = [Variable(as_ndarray(y)) for y in ys]
+        outputs = [Variable(as_array(y)) for y in ys]
 
-        if Config.enable_backward:
+        if Config.enable_backprop:
             self.generation = max([x.generation for x in inputs])
-
             for output in outputs:
                 output.set_creator(self)
-            self.inputs = inputs  # Save inputs/outputs for backprop
-            self.outputs = [
-                weakref.ref(output) for output in outputs
-            ]  # doesn't count reference of output
+            self.inputs = inputs
+            self.outputs = [weakref.ref(output) for output in outputs]
 
         return outputs if len(outputs) > 1 else outputs[0]
 
@@ -215,39 +185,15 @@ class Add(Function):
 
     def backward(self, dy):
         dx0, dx1 = dy, dy
-        if self.x0_shape != self.x1_shape:
+        if self.x0_shape != self.x1_shape:  # for broadcaset
             dx0 = mytorch.functions.sum_to(dx0, self.x0_shape)
             dx1 = mytorch.functions.sum_to(dx1, self.x1_shape)
         return dx0, dx1
 
 
 def add(x0, x1):
-    x1 = as_ndarray(x1)
+    x1 = as_array(x1)
     return Add()(x0, x1)
-
-
-class Sub(Function):
-    def forward(self, x0, x1):
-        self.x0_shape, self.x1_shape = x0.shape, x1.shape
-        y = x0 - x1
-        return y
-
-    def backward(self, dy):
-        dx0, dx1 = dy, -dy
-        if self.x0_shape != self.x1_shape:
-            dx0 = mytorch.functions.sum_to(dx0, self.x0_shape)
-            dx1 = mytorch.functions.sum_to(dx1, self.x1_shape)
-        return dx0, dx1
-
-
-def sub(x0, x1):
-    x1 = as_ndarray(x1)
-    return Sub()(x0, x1)
-
-
-def rsub(x0, x1):
-    x1 = as_ndarray(x1)
-    return Sub()(x1, x0)
 
 
 class Mul(Function):
@@ -259,15 +205,52 @@ class Mul(Function):
         x0, x1 = self.inputs
         dx0 = dy * x1
         dx1 = dy * x0
+        if x0.shape != x1.shape:  # for broadcast
+            dx0 = mytorch.functions.sum_to(dx0, x0.shape)
+            dx1 = mytorch.functions.sum_to(dx1, x1.shape)
+        return dx0, dx1
 
-        if x0.shape != x1.shape:
+
+def mul(x0, x1):
+    x1 = as_array(x1)
+    return Mul()(x0, x1)
+
+
+class Neg(Function):
+    def forward(self, x):
+        return -x
+
+    def backward(self, dy):
+        return -dy
+
+
+def neg(x):
+    return Neg()(x)
+
+
+class Sub(Function):
+    def forward(self, x0, x1):
+        self.x0_shape, self.x1_shape = x0.shape, x1.shape
+        y = x0 - x1
+        return y
+
+    def backward(self, dy):
+        dx0 = dy
+        dx1 = -dy
+        if self.x0_shape != self.x1_shape:  # for broadcast
             dx0 = mytorch.functions.sum_to(dx0, self.x0_shape)
             dx1 = mytorch.functions.sum_to(dx1, self.x1_shape)
         return dx0, dx1
 
 
-def mul(x0, x1):
-    return Mul()(x0, x1)
+def sub(x0, x1):
+    x1 = as_array(x1)
+    return Sub()(x0, x1)
+
+
+def rsub(x0, x1):
+    x1 = as_array(x1)
+    return sub(x1, x0)
 
 
 class Div(Function):
@@ -275,58 +258,43 @@ class Div(Function):
         y = x0 / x1
         return y
 
-    def backward(self, dy):
+    def backward(self, dx):
         x0, x1 = self.inputs
-        dx0 = dy / x1
-        dx1 = dy * (-x0 / x1**2)
-
-        if x0.shape != x1.shape:
+        dx0 = dx / x1
+        dx1 = dx * (-x0 / x1**2)
+        if x0.shape != x1.shape:  # for broadcast
             dx0 = mytorch.functions.sum_to(dx0, x0.shape)
             dx1 = mytorch.functions.sum_to(dx1, x1.shape)
         return dx0, dx1
 
 
 def div(x0, x1):
-    x1 = as_ndarray(x1)
+    x1 = as_array(x1)
     return Div()(x0, x1)
 
 
 def rdiv(x0, x1):
-    x1 = as_ndarray(x1)
-    return Div()(x1, x0)
-
-
-class Neg(Function):
-    def forward(self, x):
-        y = -x
-        return y
-
-    def backward(self, dy):
-        dx = -dy
-        return dx
-
-
-def neg(x):
-    return Neg()(x)
+    x1 = as_array(x1)
+    return div(x1, x0)
 
 
 class Pow(Function):
-    def __init__(self, a):
-        self.a = a
+    def __init__(self, c):
+        self.c = c
 
     def forward(self, x):
-        y = x**self.a
+        y = x**self.c
         return y
 
     def backward(self, dy):
-        x = self.inputs
-        a = self.a
-        dx = a * x ** (a - 1) * dy
+        (x,) = self.inputs
+        c = self.c
+        dx = c * x ** (c - 1) * dy
         return dx
 
 
-def pow(x, a):
-    return Pow(a)(x)
+def pow(x, c):
+    return Pow(c)(x)
 
 
 def setup_operator():

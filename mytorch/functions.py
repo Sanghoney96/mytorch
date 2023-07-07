@@ -3,7 +3,7 @@ from mytorch import Function, as_variable
 from mytorch import utils
 
 """
-## Utilities for tensor computation
+## tensor operation
 """
 
 
@@ -17,7 +17,7 @@ class Reshape(Function):
         return y
 
     def backward(self, dy):
-        return dy.reshape(self.x_shape)
+        return reshape(dy, self.x_shape)
 
 
 def reshape(x, shape):
@@ -38,7 +38,9 @@ class Transpose(Function):
         if self.axes is None:
             return transpose(dy)
 
-        inv_axes = tuple(np.array(self.axes).argsort())
+        axes_len = len(self.axes)
+        inv_axes = tuple(np.argsort([ax % axes_len for ax in self.axes]))
+
         return transpose(dy, inv_axes)
 
 
@@ -87,7 +89,7 @@ def sum_to(x, shape):
 
 
 class Sum(Function):
-    def __init__(self, axis=None, keepdims=False):
+    def __init__(self, axis, keepdims):
         self.axis = axis
         self.keepdims = keepdims
 
@@ -98,13 +100,29 @@ class Sum(Function):
 
     def backward(self, dy):
         dy = utils.reshape_sum_backward(dy, self.x_shape, self.axis, self.keepdims)
-        dx = broadcast_to(dy, self.x_shape)  # don't use np.broadcast_to.
+        dx = broadcast_to(dy, self.x_shape)
 
         return dx
 
 
 def sum(x, axis=None, keepdims=False):
     return Sum(axis, keepdims)(x)
+
+
+class MatMul(Function):
+    def forward(self, x, W):
+        y = x.dot(W)
+        return y
+
+    def backward(self, dy):
+        x, W = self.inputs
+        dx = matmul(dy, W.T)
+        dW = matmul(x.T, dy)
+        return dx, dW
+
+
+def matmul(x, W):
+    return MatMul()(x, W)
 
 
 """
@@ -125,3 +143,26 @@ class Tanh(Function):
 
 def tanh(x):
     return Tanh()(x)
+
+
+"""
+## Loss functions
+"""
+
+
+class MeanSquaredError(Function):
+    def forward(self, x0, x1):
+        error = x0 - x1
+        y = sum(error**2) / len(error)
+        return y
+
+    def backward(self, dy):
+        x0, x1 = self.inputs
+        error = x0 - x1
+        dx0 = dy * error * (2.0 / len(error))
+        dx1 = -dx0
+        return dx0, dx1
+
+
+def mean_squared_error(x0, x1):
+    return MeanSquaredError()(x0, x1)
