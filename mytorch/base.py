@@ -5,8 +5,11 @@ import mytorch
 
 
 """
-This file includes Config / Variable / Function classes:
-that support automatic differentiation.
+This file includes following classes:
+- Config 
+- Variable / Parameter 
+- Function
+They support automatic differentiation.
 """
 
 """
@@ -34,7 +37,7 @@ def no_backward():
 
 
 """
-## Variable class
+## Variable / Parameter class
 """
 
 
@@ -144,6 +147,10 @@ class Variable:
 
     def sum(self, axis=None, keepdims=False):
         return mytorch.functions.sum(self, axis, keepdims)
+
+
+class Parameter(Variable):
+    pass
 
 
 """

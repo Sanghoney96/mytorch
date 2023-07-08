@@ -206,7 +206,7 @@ def tanh(x):
 class MeanSquaredError(Function):
     def forward(self, x0, x1):
         error = x0 - x1
-        y = sum(error**2) / len(error)
+        y = (error**2).sum() / len(error)
         return y
 
     def backward(self, dy):
