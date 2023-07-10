@@ -3,6 +3,11 @@ import numpy as np
 from mytorch import Parameter
 
 
+"""
+## Optimizer class for implementing various optimization methods
+"""
+
+
 class Optimizer:
     def __init__(self):
         self.target = None
@@ -30,6 +35,11 @@ class Optimizer:
         self.hooks.append(f)
 
 
+"""
+### SGD / MomentumSGD / Adam
+"""
+
+
 class SGD(Optimizer):
     def __init__(self, lr=0.01):
         super().__init__()
@@ -49,7 +59,7 @@ class MomentumSGD(Optimizer):
     def update_one(self, param):
         v_key = id(param)
         if v_key not in self.vs:
-            self.vs[v_key] = Parameter(np.zeros_like(param.data))
+            self.vs[v_key] = np.zeros_like(param.data)
 
         v = self.vs[v_key]
         v = self.momentum * v - self.lr * param.grad.data
@@ -59,13 +69,13 @@ class MomentumSGD(Optimizer):
 class Adam(Optimizer):
     def __init__(self, alpha=0.001, beta1=0.9, beta2=0.999, eps=1e-8):
         super().__init__()
+        self.t = 0
         self.alpha = alpha
         self.beta1 = beta1
         self.beta2 = beta2
         self.eps = eps
         self.ms = {}
         self.vs = {}
-        self.iter = 0
 
     def update(self, *args, **kwargs):
         self.t += 1
@@ -74,8 +84,8 @@ class Adam(Optimizer):
     def update_one(self, param):
         key = id(param)
         if key not in self.ms:
-            self.ms[key] = Parameter(np.zeros_like(param.data))
-            self.vs[key] = Parameter(np.zeros_like(param.data))
+            self.ms[key] = np.zeros_like(param.data)
+            self.vs[key] = np.zeros_like(param.data)
 
         m, v = self.ms[key], self.vs[key]
         beta1, beta2, eps = self.beta1, self.beta2, self.eps
