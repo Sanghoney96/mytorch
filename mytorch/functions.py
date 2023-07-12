@@ -183,6 +183,27 @@ def sigmoid(x):
     return Sigmoid()(x)
 
 
+class Softmax(Function):
+    def __init__(self, axis=1):
+        self.axis = axis
+
+    def forward(self, x):
+        y = np.exp(x)
+        y /= y.sum(axis=self.axis, keepdims=True)
+        return y
+
+    def backward(self, dy):
+        y = self.outputs[0]()
+        dx = y * dy
+        sumdx = dx.sum(axis=self.axis, keepdims=True)
+        dx -= y * sumdx
+        return dx
+
+
+def softmax(x, axis=1):
+    return Softmax(axis)(x)
+
+
 class Tanh(Function):
     def forward(self, x):
         y = np.tanh(x)

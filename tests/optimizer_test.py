@@ -14,10 +14,9 @@ y = np.sin(2 * np.pi * x) + np.random.rand(100, 1)
 
 lr = 0.1
 max_iter = 10000
-hidden_size = 10
 
-model = MLP((hidden_size, 1))
-optimizer = optimizers.MomentumSGD(lr).setup(model)
+model = MLP((32, 10))
+optimizer = optimizers.Adam().setup(model)
 
 for i in range(max_iter):
     y_pred = model(x)
